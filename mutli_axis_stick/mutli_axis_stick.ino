@@ -4,9 +4,38 @@
 #include <Adafruit_SSD1306.h>
 #include <Encoder.h>
 
+// Debug flag
+  bool debug_axis = 0;
+  bool debug_btn = 0;
+  bool debug_switch = 0;
+  bool debug_rot_encoder = 1;
+  
+// Define Pin Variables
+// Multiplexers
+  int pin_mux_ctl_1 = 0;
+  int pin_mux_ctl_2 = 1;
+  int pin_mux_ctl_3 = 2;
+  int pin_mux_ctl_4 = 3;
+  int pin_sig_joy = 20;
+  int pin_sig_btn = 21;
+
+//Rotary Encoder
+  int pin_enc_dt = 4;
+  int pin_enc_clk = 5;
+  int pin_enc_button = 6;
+
+//toggle switches
+  int pin_switch_1=7;
+  int pin_switch_2=8;
+  int pin_switch_3=9;
+  int pin_switch_4=13;
+  int pin_switch_5=14;
+  int pin_switch_6=15;
+  int pin_switch_7=16;
+  int pin_switch_8=17;
+
 // Variables for encoder
-Encoder enc_knob(6, 7);
-int enc_button_pin = 8;
+Encoder enc_knob(pin_enc_dt, pin_enc_clk);
 long enc_last_pos = -999;
 int enc_mode=1;
 
@@ -15,26 +44,6 @@ int enc_mode=1;
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 #define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-
-const unsigned char myBitmap [] PROGMEM = {
-  0x7f, 0xfe, 0xe0, 0x07, 0xc0, 0x23, 0x80, 0x79, 0x80, 0xc9, 0x80, 0x59, 0x86, 0x71, 0x8f, 0x01, 
-  0x90, 0x81, 0xe0, 0x41, 0xc0, 0x21, 0x80, 0x11, 0x80, 0x09, 0xc0, 0x07, 0xe0, 0x07, 0x7f, 0xfe
-};
-
-// '1129352', 25x25px
-const unsigned char robot [] PROGMEM = {
-  0x00, 0x1e, 0x00, 0x00, 0x00, 0x77, 0x00, 0x00, 0x00, 0xf1, 0x80, 0x00, 0x00, 0xe1, 0x80, 0x00, 
-  0x00, 0xc0, 0x80, 0x00, 0x00, 0x80, 0x80, 0x00, 0x01, 0xf8, 0xc0, 0x00, 0x1f, 0xdf, 0xfc, 0x00, 
-  0x1b, 0xdf, 0xfc, 0x00, 0x01, 0xf7, 0xc0, 0x00, 0x00, 0x80, 0x80, 0x00, 0x00, 0x80, 0x80, 0x00, 
-  0x00, 0x8c, 0x80, 0x00, 0x00, 0x80, 0x80, 0x00, 0x01, 0xff, 0xc0, 0x00, 0x07, 0xff, 0xf0, 0x00, 
-  0x1f, 0xff, 0xfc, 0x00, 0x39, 0xff, 0xce, 0x00, 0x11, 0xff, 0xc6, 0x00, 0x11, 0xff, 0xc4, 0x00, 
-  0x31, 0xff, 0xc6, 0x00, 0x38, 0x41, 0x0e, 0x00, 0x38, 0x41, 0x0e, 0x00, 0x01, 0xf7, 0xc0, 0x00, 
-  0x01, 0xe3, 0xc0, 0x00
-};
-
-int robot_pos=10;
-int robot_move_trigger=0;
-int robot_move_dir=0;
 
 // Variables for Stick Values
   int data_L1_x;
@@ -46,29 +55,16 @@ int robot_move_dir=0;
   int data_R_y;
   int data_R_z;
   int data_SL;
-  int hat_angle;
+  int data_hat_angle;
   int data_per_SL;
   
-// MUX Sig/Data Pins
-  int SIG_pin_JOY = 14;
-  int SIG_pin_BTN = 15;
- 
   
 // Variables for Buttons
-  const int numButtons = 15;
+  const int numButtons = 14;
   byte allButtons[numButtons];
-  byte prevButtons[numButtons];
   int button_map[numButtons];
   
 // Variables for switches
-  int switch_1_pin=11;
-  int switch_2_pin=10;
-  int switch_3_pin=9;
-  int switch_4_pin=20;
-  int switch_5_pin=21;
-  int switch_6_pin=22;
-  int switch_7_pin=17;
-  int switch_8_pin=16;
   int val_switch_1;
   int val_switch_2;
   int val_switch_3;
@@ -100,12 +96,6 @@ int robot_move_dir=0;
   bool mouse_btn_middle = 0;
   bool mouse_btn_right = 0;
 
-// Debug flag
-  bool debug_axis = 0l;
-  bool debug_btn = 0;
-  bool debug_switch = 0;
-  bool debug_rot_encoder = 0;
-
 // Timer variable for triggers
   unsigned long joystick_timer=0;
   unsigned long display_timer=0;
@@ -113,30 +103,31 @@ int robot_move_dir=0;
 
 void setup()
   {
-     pinMode(SIG_pin_BTN, INPUT_PULLUP);
+     pinMode(pin_sig_btn, INPUT_PULLUP);
+     
   // MUX Pins
-    pinMode(0, OUTPUT); 
-    pinMode(1, OUTPUT); 
-    pinMode(2, OUTPUT); 
-    pinMode(3, OUTPUT);
+    pinMode(pin_mux_ctl_1, OUTPUT); 
+    pinMode(pin_mux_ctl_2, OUTPUT); 
+    pinMode(pin_mux_ctl_3, OUTPUT); 
+    pinMode(pin_mux_ctl_4, OUTPUT);
 
-    digitalWrite(0, LOW);
-    digitalWrite(1, LOW);
-    digitalWrite(2, LOW);
-    digitalWrite(3, LOW);
+    digitalWrite(pin_mux_ctl_1, LOW);
+    digitalWrite(pin_mux_ctl_2, LOW);
+    digitalWrite(pin_mux_ctl_3, LOW);
+    digitalWrite(pin_mux_ctl_4, LOW);
 
   // Switch Buttons
-    pinMode(11, INPUT_PULLUP);
-    pinMode(10, INPUT_PULLUP);
-    pinMode(9, INPUT_PULLUP);
-    pinMode(16, INPUT_PULLUP);
-    pinMode(17, INPUT_PULLUP);
-    pinMode(20, INPUT_PULLUP);
-    pinMode(21, INPUT_PULLUP);
-    pinMode(22, INPUT_PULLUP);
+    pinMode(pin_switch_1, INPUT_PULLUP);
+    pinMode(pin_switch_2, INPUT_PULLUP);
+    pinMode(pin_switch_3, INPUT_PULLUP);
+    pinMode(pin_switch_4, INPUT_PULLUP);
+    pinMode(pin_switch_5, INPUT_PULLUP);
+    pinMode(pin_switch_6, INPUT_PULLUP);
+    pinMode(pin_switch_7, INPUT_PULLUP);
+    pinMode(pin_switch_8, INPUT_PULLUP);
 
   // Ecoder button
-  pinMode(enc_button_pin, INPUT_PULLUP);
+  pinMode(pin_enc_button, INPUT_PULLUP);
   
   
   // Start serial debug output
@@ -156,21 +147,20 @@ void setup()
   display.clearDisplay();
 
   // Button map
-  button_map[0]=10;
-  button_map[1]=11;
-  button_map[2]=12;
-  button_map[3]=13;
-  button_map[4]=14;
-  button_map[5]=9;
-  button_map[6]=8;
-  button_map[7]=7;
-  button_map[8]=6;
-  button_map[9]=5;
-  button_map[10]=4;
-  button_map[11]=3;
+  button_map[0]=8;
+  button_map[1]=7;
+  button_map[2]=6;
+  button_map[3]=5;
+  button_map[4]=4;
+  button_map[5]=3;
+  button_map[6]=1;
+  button_map[7]=14;
+  button_map[8]=10;
+  button_map[9]=11;
+  button_map[10]=12;
+  button_map[11]=13;
   button_map[12]=2;
-  button_map[13]=1;
-  button_map[14]=15;
+  button_map[13]=9;
 }
 
 
@@ -180,7 +170,7 @@ void loop(){
       joystick_timer = millis();
       
       get_values_switch();
-      get_values_analog_sticks();
+      get_values_joystick();
       
       set_joystick_buttons();
       set_joystick_axis();
@@ -189,7 +179,7 @@ void loop(){
       if( val_switch_1 == 1 ) L2_wasd();
 
       
-      enc_button_func(digitalRead(enc_button_pin));
+      enc_button_func(digitalRead(pin_enc_button));
       data_per_SL = map(data_SL,0,1023,0,100); 
       Joystick.send_now();
 
@@ -253,6 +243,7 @@ void loop(){
         last_val_switch_8 = val_switch_8;
       }
   }
+  
  // Process the rotary encoder
   if(millis() - encoder_timer > 500){
     encoder_timer = millis();
@@ -316,7 +307,6 @@ void drawProgressbar(int x,int y, int width,int height, int progress)
 
 void enc_button_func(int new_button_val){
   static int old_button_val;
-  Serial.println(new_button_val);
   if (new_button_val != old_button_val){
     if ( new_button_val == 0)
     {
@@ -338,7 +328,7 @@ void set_joystick_axis(){
 
 void set_joystick_buttons(){
   for (int i=0; i<numButtons; i++) {
-  /*  Serial.print(F("Btn "));
+ /*   Serial.print(F("Btn "));
     Serial.print(i);
     Serial.print(F(": "));
     Serial.print(allButtons[i]);
@@ -365,7 +355,7 @@ void set_joystick_buttons(){
 }
   
 int readMux_JOY(int channel){
-  int controlPin[] = {0, 1, 2, 3};
+  int controlPin[] = {pin_mux_ctl_1, pin_mux_ctl_2, pin_mux_ctl_3, pin_mux_ctl_4};
 
   int muxChannel[16][4]={
     {0,0,0,0}, //channel 0
@@ -392,14 +382,14 @@ int readMux_JOY(int channel){
   }
 
   //read the value at the SIG pin
-  int val = analogRead(SIG_pin_JOY);
+  int val = analogRead(pin_sig_joy);
 
   //return the value
   return val;
 }
 
 int readMux_BTN(int channel){
-  int controlPin[] = {0, 1, 2, 3};
+  int controlPin[] = {pin_mux_ctl_1, pin_mux_ctl_2, pin_mux_ctl_3, pin_mux_ctl_4};
 
   int muxChannel[16][4]={
     {0,0,0,0}, //channel 0
@@ -424,9 +414,9 @@ int readMux_BTN(int channel){
   for(int i = 0; i < 4; i ++){
     digitalWrite(controlPin[i], muxChannel[channel][i]);
   }
-
+  
   //read the value at the SIG pin
-  int val = analogRead(SIG_pin_BTN);
+  int val = analogRead(pin_sig_btn);
 
   //return the value
   return val;
@@ -620,16 +610,16 @@ void L2_wasd()
   
 void L1_hat()
 {
-  if ( data_L1_y < 200 && data_L1_x < 800 && data_L1_x > 200 ) hat_angle=0;
-  else if ( data_L1_y < 200 && data_L1_x > 800 ) hat_angle=45;
-  else if ( data_L1_x > 800 && data_L1_y < 800 && data_L1_y > 200 ) hat_angle=90;
-  else if ( data_L1_x > 800 && data_L1_y > 800 ) hat_angle=135;
-  else if ( data_L1_y > 800 && data_L1_x < 800 && data_L1_x > 200 ) hat_angle=180;
-  else if ( data_L1_x < 200 && data_L1_y > 800 ) hat_angle=225;
-  else if ( data_L1_x < 200 && data_L1_y < 800 && data_L1_y > 200 ) hat_angle=270;
-  else if ( data_L1_x < 200 && data_L1_y < 200 )hat_angle=315;
-  else if ( data_L1_x > 200 && data_L1_x < 800 && data_L1_y > 200 && data_L1_y < 800 )hat_angle=-1;
-  Joystick.hat(hat_angle);
+  if ( data_L1_y < 200 && data_L1_x < 800 && data_L1_x > 200 ) data_hat_angle=0;
+  else if ( data_L1_y < 200 && data_L1_x > 800 ) data_hat_angle=45;
+  else if ( data_L1_x > 800 && data_L1_y < 800 && data_L1_y > 200 ) data_hat_angle=90;
+  else if ( data_L1_x > 800 && data_L1_y > 800 ) data_hat_angle=135;
+  else if ( data_L1_y > 800 && data_L1_x < 800 && data_L1_x > 200 ) data_hat_angle=180;
+  else if ( data_L1_x < 200 && data_L1_y > 800 ) data_hat_angle=225;
+  else if ( data_L1_x < 200 && data_L1_y < 800 && data_L1_y > 200 ) data_hat_angle=270;
+  else if ( data_L1_x < 200 && data_L1_y < 200 )data_hat_angle=315;
+  else if ( data_L1_x > 200 && data_L1_x < 800 && data_L1_y > 200 && data_L1_y < 800 )data_hat_angle=-1;
+  Joystick.hat(data_hat_angle);
 }
 
  void L1_arrows()
@@ -682,7 +672,7 @@ void L1_hat()
           break;
           default:
           // Statement(s)
-          break; // Wird nicht benötigt, wenn Statement(s) vorhanden sind
+          break; 
         }
         L1_key_pressed=0;
       }
@@ -838,14 +828,14 @@ void enc_arrows_pgup_pgdwn(long new_value){
 
 void get_values_switch(){
   // Get value of switches
-    val_switch_1=digitalRead(switch_1_pin);
-    val_switch_2=digitalRead(switch_2_pin);
-    val_switch_3=digitalRead(switch_3_pin);
-    val_switch_4=digitalRead(switch_4_pin);
-    val_switch_5=digitalRead(switch_5_pin);
-    val_switch_6=digitalRead(switch_6_pin);
-    val_switch_7=digitalRead(switch_7_pin);
-    val_switch_8=digitalRead(switch_8_pin);
+    val_switch_1=digitalRead(pin_switch_1);
+    val_switch_2=digitalRead(pin_switch_2);
+    val_switch_3=digitalRead(pin_switch_3);
+    val_switch_4=digitalRead(pin_switch_4);
+    val_switch_5=digitalRead(pin_switch_5);
+    val_switch_6=digitalRead(pin_switch_6);
+    val_switch_7=digitalRead(pin_switch_7);
+    val_switch_8=digitalRead(pin_switch_8);
     
   if ( debug_switch == 1 )
   {
@@ -858,7 +848,7 @@ void get_values_switch(){
   } 
 }
 
-void get_values_analog_sticks(){
+void get_values_joystick(){
   for(int i = 0; i < 15; i ++)
   {
     switch (i) 
