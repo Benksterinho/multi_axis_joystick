@@ -8,7 +8,7 @@
   bool debug_axis = 0;
   bool debug_btn = 0;
   bool debug_switch = 0;
-  bool debug_rot_encoder = 1;
+  bool debug_rot_encoder = 0;
   
 // Define Pin Variables
 // Multiplexers
@@ -245,7 +245,7 @@ void loop(){
   }
   
  // Process the rotary encoder
-  if(millis() - encoder_timer > 500){
+ /* if(millis() - encoder_timer > 500){
     encoder_timer = millis();
     
     switch (enc_mode) 
@@ -257,13 +257,13 @@ void loop(){
           enc_arrows_home_end(get_values_rot_encoder());
           break;
         case 3:
-          enc_arrows_insert_delete(get_values_rot_encoder());
+          enc_arrows_d_a(get_values_rot_encoder());
           break;
         default:
           enc_arrows_lr(get_values_rot_encoder());
           break;
       }
-  }
+  }*/
 
   // Process the OLED Display
   if(millis() - display_timer > 20){
@@ -282,7 +282,7 @@ void loop(){
           display.print("Target");
           break;
         case 3:
-          display.print("Utilties");
+          display.print("Menu");
           break;
         default:
           enc_arrows_lr(get_values_rot_encoder());
@@ -784,18 +784,20 @@ void enc_arrows_home_end(long new_value){
   }
 }
 
-void enc_arrows_insert_delete(long new_value){
+void enc_arrows_d_a(long new_value){
   static long old_value;
   if ( new_value != old_value) {
     if ( new_value < old_value ){
       // Turn Left
-      Keyboard.press(KEY_DELETE);
-      Keyboard.release(KEY_DELETE);
+      Keyboard.press(KEY_A);
+      delay(2);
+      Keyboard.release(KEY_A);
       }
     else {
       // Turn Right
-      Keyboard.press(KEY_INSERT);
-      Keyboard.release(KEY_INSERT);
+      Keyboard.press(KEY_D);
+      delay(2);
+      Keyboard.release(KEY_D);
     }
     if ( debug_rot_encoder == 1 )
   {
